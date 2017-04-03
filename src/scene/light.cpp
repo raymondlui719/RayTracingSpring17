@@ -11,9 +11,33 @@ double DirectionalLight::distanceAttenuation( const vec3f& P ) const
 
 vec3f DirectionalLight::shadowAttenuation( const vec3f& P ) const
 {
-    // YOUR CODE HERE:
-    // You should implement shadow-handling code here.
-    return vec3f(1,1,1);
+	vec3f dir = getDirection(P);
+	isect i;
+	vec3f resultColor = getColor(P);
+
+	vec3f iP = P;
+	ray R = ray(iP, dir);
+	bool isSecondIntersect = false;	// second intersection of the same scene object
+	while (scene->intersect(R, i))	// handle transparent object intersection case
+	{
+		if (i.getMaterial().kt.iszero()) {
+			// if there is a non-transparent object along a path to the light source
+			return vec3f(0.0, 0.0, 0.0);
+		}
+		// set new ray
+		iP = R.at(i.t);
+		R = ray(iP, dir);
+
+		if (!isSecondIntersect) {
+			// attenuate the result to the transmissive coef
+			resultColor = prod(resultColor, i.getMaterial().kt);
+			isSecondIntersect = true;
+		}
+		else {
+			isSecondIntersect = false;
+		}
+	}
+	return resultColor;
 }
 
 vec3f DirectionalLight::getColor( const vec3f& P ) const
@@ -29,11 +53,13 @@ vec3f DirectionalLight::getDirection( const vec3f& P ) const
 
 double PointLight::distanceAttenuation( const vec3f& P ) const
 {
-	// YOUR CODE HERE
-
-	// You'll need to modify this method to attenuate the intensity 
-	// of the light based on the distance between the source and the 
-	// point P.  For now, I assume no attenuation and just return 1.0
+	double dSquared = (P - position).length_squared();
+	double d = (P - position).length();
+	// apply user-supplied constants to calculate f(d)
+	double coeff = m_const_atten_coeff + m_linear_atten_coeff * d + m_quadratic_atten_coeff * dSquared;
+	if (coeff != 0.0 && coeff > 1.0) {
+		return 1.0 / coeff;
+	}
 	return 1.0;
 }
 
@@ -58,9 +84,39 @@ void PointLight::setDistanceAttenuation(const double constant, const double line
 
 vec3f PointLight::shadowAttenuation(const vec3f& P) const
 {
-    // YOUR CODE HERE:
-    // You should implement shadow-handling code here.
-    return vec3f(1,1,1);
+	vec3f dir = getDirection(P);
+	isect i;
+	vec3f resultColor = getColor(P);
+	double light_t = (position - P).length();
+	
+	vec3f iP = P;
+	ray R = ray(iP, dir);
+	bool isSecondIntersect = false;	// second intersection of the same scene object
+	while (scene->intersect(R, i))	// handle transparent object intersection case
+	{
+		light_t -= i.t;
+		if (light_t < RAY_EPSILON) {
+			// if the intersected object locates behind the point light
+			return resultColor;
+		}
+		if (i.getMaterial().kt.iszero()) {
+			// if there is a non-transparent object along a path to the light source
+			return vec3f(0.0, 0.0, 0.0);
+		}
+		// set new ray
+		iP = R.at(i.t);
+		R = ray(iP, dir);
+		
+		if (!isSecondIntersect) {
+			// attenuate the result to the transmissive coef
+			resultColor = prod(resultColor, i.getMaterial().kt);
+			isSecondIntersect = true;
+		}
+		else {
+			isSecondIntersect = false;
+		}
+	}
+	return resultColor;
 }
 
 double AmbientLight::distanceAttenuation(const vec3f& P) const

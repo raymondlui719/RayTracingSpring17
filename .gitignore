@@ -11,8 +11,8 @@
 *.userprefs
 
 # Build results
-[Dd]ebug/
-[Dd]ebug/ray.tlog/
+Debug/*
+Debug/ray.tlog/*
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
