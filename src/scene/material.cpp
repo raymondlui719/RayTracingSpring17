@@ -6,17 +6,20 @@
 // the color of that point.
 vec3f Material::shade( Scene *scene, const ray& r, const isect& i ) const
 {
-	// YOUR CODE HERE
+	vec3f result = ke;	// iter 0
+	result += prod(ka, scene->getAmbient()); // iter 1
 
-	// For now, this method just returns the diffuse color of the object.
-	// This gives a single matte color for every distinct surface in the
-	// scene, and that's it.  Simple, but enough to get you started.
-	// (It's also inconsistent with the phong model...)
-
-	// Your mission is to fill in this method with the rest of the phong
-	// shading model, including the contributions of all the light sources.
-    // You will need to call both distanceAttenuation() and shadowAttenuation()
-    // somewhere in your code in order to compute shadows and light falloff.
-
-	return kd;
+	// iter 2 & 3
+	vec3f normal = i.N;
+	vec3f P = r.at(i.t);
+	for (Scene::cliter j = scene->beginLights(); j != scene->endLights(); ++j) {
+		vec3f atten = (*j)->distanceAttenuation(P) * (*j)->shadowAttenuation(P + i.N * RAY_EPSILON);
+		vec3f Lj = (*j)->getDirection(P);
+		vec3f diffuse = kd * maximum(normal.dot(Lj), 0.0);
+		vec3f R = ((2.0 * (normal.dot(Lj)) * normal) - Lj).normalize();
+		vec3f specular = ks * (pow(maximum(R * (-r.getDirection()), 0.0), shininess * 128.0));
+		result += prod(atten, diffuse + specular);
+	}
+	result = result.clamp();
+	return result;
 }
