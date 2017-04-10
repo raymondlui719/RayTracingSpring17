@@ -41,12 +41,23 @@ public:
 
 	int			getSize();
 	int			getDepth();
+	bool IsEnableFresnel() const
+	{
+		return m_is_enable_fresnel;
+	}
 
 private:
 	RayTracer*	raytracer;
 
 	int			m_nSize;
 	int			m_nDepth;
+	int			m_nConAtn;
+	int			m_nLinAtn;
+	int			m_nQuadAtn;
+	int			m_nAmbLight;
+	int			m_nInt;
+	int			m_nDist;
+	double		m_is_enable_fresnel;
 
 // static class members
 	static Fl_Menu_Item menuitems[];
@@ -62,6 +73,12 @@ private:
 
 	static void cb_sizeSlides(Fl_Widget* o, void* v);
 	static void cb_depthSlides(Fl_Widget* o, void* v);
+	static void cb_conAtnSlides(Fl_Widget* o, void* v);
+	static void cb_linAtnSlides(Fl_Widget* o, void* v);
+	static void cb_quadAtnSlides(Fl_Widget* o, void* v);
+	static void cb_ambLightSlides(Fl_Widget* o, void* v);
+	static void cb_intSlides(Fl_Widget* o, void* v);
+	static void cb_distSlides(Fl_Widget* o, void* v);
 
 	static void cb_render(Fl_Widget* o, void* v);
 	static void cb_stop(Fl_Widget* o, void* v);

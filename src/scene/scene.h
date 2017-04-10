@@ -212,10 +212,14 @@ class SceneObject
 public:
 	virtual const Material& getMaterial() const = 0;
 	virtual void setMaterial( Material *m ) = 0;
+	virtual bool hasInterior() const { return true; }
+	virtual void setOrder(int ord) = 0;
+	virtual int getOrder() const { return order; }
 
 protected:
 	SceneObject( Scene *scene )
 		: Geometry( scene ) {}
+	int order;
 };
 
 // A simple extension of SceneObject that adds an instance of Material
@@ -228,6 +232,9 @@ public:
 
 	virtual const Material& getMaterial() const { return *material; }
 	virtual void setMaterial( Material *m )	{ material = m; }
+	virtual bool hasInterior() const { return true; }
+	virtual void setOrder(int ord) { order = ord; }
+	virtual int getOrder() const { return order; }
 
 protected:
 	MaterialSceneObject( Scene *scene, Material *mat ) 
@@ -236,6 +243,7 @@ protected:
 	//	: SceneObject( scene ), material( new Material ) {}
 
 	Material *material;
+	int order;
 };
 
 class Scene
