@@ -20,6 +20,9 @@ vec3f RayTracer::trace( Scene *scene, double x, double y )
 {
     ray r( vec3f(0,0,0), vec3f(0,0,0) );
     scene->getCamera()->rayThrough( x,y,r );
+	mediaStack = std::stack<const Material*>();
+	Material air;
+	mediaStack.push(&air);
 	return traceRay( scene, r, vec3f(1.0,1.0,1.0), 0 ).clamp();
 }
 
@@ -31,143 +34,69 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 	isect i;
 
 	if( scene->intersect( r, i ) ) {
-		// YOUR CODE HERE
-
-		// An intersection occured!  We've got work to do.  For now,
-		// this code gets the material for the surface that was intersected,
-		// and asks that material to provide a color for the ray.  
-
-		vec3f shade;
 
 		const Material& m = i.getMaterial();
-		shade += m.shade(scene, r, i);
-		if (depth >= traceUI->getDepth())
-			return shade;
+		vec3f shade = m.shade(scene, r, i);
+		const vec3f intensity(shade[0] * thresh[0], shade[1] * thresh[1], shade[2] * thresh[2]);
 
-		vec3f conPoint = r.at(i.t);
-		vec3f normal;
-		vec3f Rdir = 2 * (i.N*-r.getDirection()) * i.N - (-r.getDirection());
-		ray R = ray(conPoint, Rdir);
-
-		const double fresnel_coeff = getFresnel(i, r);
-		
 		//handle reflection
-		if (!i.getMaterial().kr.iszero())
+		vec3f reflection;
+		if (!m.kr.iszero() && depth < traceUI->getDepth())
 		{
-			shade += (fresnel_coeff*prod(i.getMaterial().kr, traceRay(scene, R, thresh, depth + 1)));
+			vec3f rDir = ((2.0 * (i.N.dot(-r.getDirection())) * i.N) - (-r.getDirection())).normalize();
+			vec3f rPoint = r.at(i.t) + i.N * RAY_EPSILON;
+			ray reflectedRay = ray(rPoint, rDir);
+			const vec3f next_thresh(thresh[0] * m.kr[0], thresh[1] * m.kr[1], thresh[2] * m.kr[2]);
+			reflection = prod(m.kr, traceRay(scene, reflectedRay, next_thresh, depth + 1));
 		}
 
 		//handle refraction
-		if (!i.getMaterial().kt.iszero())
+		vec3f transmission;
+		if (!m.kt.iszero() && depth < traceUI->getDepth())
 		{
-			// take account total refraction effect
-			bool TotalRefraction = false;
-			// opposite ray
-			ray oppR(conPoint, r.getDirection()); //without refraction
-
-												  // marker to simulate a stack
-			bool toAdd = false, toErase = false;
-
-			// For now, the interior is just hardcoded
-			// That is, we judge it according to cap and whether it is box
-			if (i.obj->hasInterior())
-			{
-				// refractive index
-				double indexA, indexB;
-
-				// For ray go out of an object
-				if (i.N*r.getDirection() > RAY_EPSILON)
-				{
-					if (mediaHistory.empty())
-					{
-						indexA = 1.0;
-					}
-					else
-					{
-						// return the refractive index of last object
-						indexA = mediaHistory.rbegin()->second.index;
-					}
-
-					mediaHistory.erase(i.obj->getOrder());
-					toAdd = true;
-					if (mediaHistory.empty())
-					{
-						indexB = 1.0;
-					}
-					else
-					{
-						indexB = mediaHistory.rbegin()->second.index;
-					}
-					normal = -i.N;
-				}
-				// For ray get in the object
-				else
-				{
-					if (mediaHistory.empty())
-					{
-						indexA = 1.0;
-					}
-					else
-					{
-						indexA = mediaHistory.rbegin()->second.index;
-					}
-					mediaHistory.insert(make_pair(i.obj->getOrder(), i.getMaterial()));
-					toErase = true;
-					indexB = mediaHistory.rbegin()->second.index;
-					normal = i.N;
-				}
-
-				double indexRatio = indexA / indexB;
-				double cos_i = max(min(normal*((-r.getDirection()).normalize()), 1.0), -1.0); //SYSNOTE: min(x, 1.0) to prevent cos_i becomes bigger than 1
-				double sin_i = sqrt(1 - cos_i*cos_i);
-				double sin_t = sin_i * indexRatio;
-
-				if (sin_t > 1.0)
-				{
-					TotalRefraction = true;
-				}
-				else
-				{
-					TotalRefraction = false;
-					double cos_t = sqrt(1 - sin_t*sin_t);
-					vec3f Tdir = (indexRatio*cos_i - cos_t)*normal - indexRatio*-r.getDirection();
-					oppR = ray(conPoint, Tdir);
-					if (!traceUI->IsEnableFresnel()) {
-						shade += prod(i.getMaterial().kt, traceRay(scene, oppR, thresh, depth + 1));
-					}
-					else
-					{
-						shade += ((1 - fresnel_coeff)*prod(i.getMaterial().kt, traceRay(scene, oppR, thresh, depth + 1)));
-					}
-				}
+			const Material* currMat = mediaStack.top();
+			double ni, nt;
+			vec3f point, normal;
+			if (currMat == &m) {
+				mediaStack.pop();
+				const Material *outside = mediaStack.top();
+				mediaStack.push(currMat);
+				ni = m.index;
+				nt = outside->index;
+				normal = -i.N;
+			}
+			else {
+				ni = currMat->index;
+				nt = m.index;
+				normal = i.N;
 			}
 
-			if (toAdd)
-			{
-				mediaHistory.insert(make_pair(i.obj->getOrder(), i.getMaterial()));
-			}
-			if (toErase)
-			{
-				mediaHistory.erase(i.obj->getOrder());
+			const double nr = ni / nt;
+			const double ndotr = normal.dot(-r.getDirection());
+			point = r.at(i.t) - normal * RAY_EPSILON;
+			double cos_i = max(min(normal * ((-r.getDirection()).normalize()), 1.0), -1.0); //SYSNOTE: min(x, 1.0) to prevent cos_i becomes bigger than 1
+			double sin_i = sqrt(1 - cos_i * cos_i);
+			double sin_t = sin_i * nr;
+
+			if (sin_t <= 1.0) {
+				mediaStack.push(&m);
+				double cos_t = sqrt(1 - sin_t*sin_t);
+				vec3f tDir = (nr * cos_i - cos_t) * normal - nr * (-r.getDirection());
+				ray transmittedRay = ray(r.at(i.t), tDir);
+				const vec3f next_thresh(thresh[0] * m.kt[0], thresh[1] * m.kt[1], thresh[2] * m.kt[2]);
+				transmission = prod(m.kt, traceRay(scene, transmittedRay, next_thresh, depth + 1));
 			}
 		}
 
-		// This is a great place to insert code for recursive ray tracing.
-		// Instead of just returning the result of shade(), add some
-		// more steps: add in the contributions from reflected and refracted
-		// rays.
-		shade = shade.clamp();
-		return shade;
-	
-	} else {
-		// No intersection.  This ray travels to infinity, so we color
-		// it according to the background color, which in this (simple) case
-		// is just black.
-
+		return intensity + reflection + transmission;
+	}
+	else
+	{
 		return vec3f( 0.0, 0.0, 0.0 );
 	}
 }
 
+/*
 double RayTracer::getFresnel(isect& i, const ray& r)
 {
 	if (!traceUI->IsEnableFresnel())
@@ -180,41 +109,41 @@ double RayTracer::getFresnel(isect& i, const ray& r)
 		double indexA, indexB;
 		if (i.N*r.getDirection() > RAY_EPSILON)
 		{
-			if (mediaHistory.empty())
+			if (mediaTracker.empty())
 			{
 				indexA = 1.0;
 			}
 			else
 			{
-				indexA = mediaHistory.rbegin()->second.index;
+				indexA = mediaTracker.rbegin()->second.index;
 			}
-			mediaHistory.erase(i.obj->getOrder());
-			if (mediaHistory.empty())
+			mediaTracker.erase(i.obj->getOrder());
+			if (mediaTracker.empty())
 			{
 				indexB = 1.0;
 			}
 			else
 			{
-				indexB = mediaHistory.rbegin()->second.index;
+				indexB = mediaTracker.rbegin()->second.index;
 			}
 			normal = -i.N;
-			mediaHistory.insert(make_pair(i.obj->getOrder(), i.getMaterial()));
+			mediaTracker.insert(make_pair(i.obj->getOrder(), i.getMaterial()));
 		}
 		// For ray get in the object
 		else
 		{
-			if (mediaHistory.empty())
+			if (mediaTracker.empty())
 			{
 				indexA = 1.0;
 			}
 			else
 			{
-				indexA = mediaHistory.rbegin()->second.index;
+				indexA = mediaTracker.rbegin()->second.index;
 			}
 			normal = i.N;
-			mediaHistory.insert(make_pair(i.obj->getOrder(), i.getMaterial()));
-			indexB = mediaHistory.rbegin()->second.index;
-			mediaHistory.erase(i.obj->getOrder());
+			mediaTracker.insert(make_pair(i.obj->getOrder(), i.getMaterial()));
+			indexB = mediaTracker.rbegin()->second.index;
+			mediaTracker.erase(i.obj->getOrder());
 		}
 
 		double r0 = (indexA - indexB) / (indexA + indexB);
@@ -246,6 +175,7 @@ double RayTracer::getFresnel(isect& i, const ray& r)
 		return 1.0;
 	}
 }
+*/
 
 RayTracer::RayTracer()
 {

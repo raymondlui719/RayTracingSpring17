@@ -45,18 +45,31 @@ public:
 	{
 		return m_is_enable_fresnel;
 	}
+	double getConstantAttenuation() const
+	{
+		return m_nConAtn;
+	}
+	double getLinearAttenuation() const
+	{
+		return m_nLinAtn;
+	}
+	double getQuadraticAttenuation() const
+	{
+		return m_nQuadAtn;
+	}
+
 
 private:
 	RayTracer*	raytracer;
 
 	int			m_nSize;
 	int			m_nDepth;
-	int			m_nConAtn;
-	int			m_nLinAtn;
-	int			m_nQuadAtn;
-	int			m_nAmbLight;
+	double		m_nConAtn;
+	double		m_nLinAtn;
+	double		m_nQuadAtn;
+	double		m_nAmbLight;
 	int			m_nInt;
-	int			m_nDist;
+	double		m_nDist;
 	double		m_is_enable_fresnel;
 
 // static class members

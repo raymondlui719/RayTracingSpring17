@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "../scene/scene.h"
+#include "../ui/TraceUI.h"
 
 Scene *readScene( const string& filename );
 Scene *readScene( istream& is );

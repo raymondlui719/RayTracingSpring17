@@ -23,6 +23,7 @@
 
 typedef map<string,Material*> mmap;
 
+extern TraceUI* traceUI;
 static void processObject( Obj *obj, Scene *scene, mmap& materials );
 static Obj *getColorField( Obj *obj );
 static Obj *getField( Obj *obj, const string& name );
@@ -552,6 +553,14 @@ static void processObject( Obj *obj, Scene *scene, mmap& materials )
 				getField(child, "constant_attenuation_coeff")->getScalar(),
 				getField(child, "linear_attenuation_coeff")->getScalar(),
 				getField(child, "quadratic_attenuation_coeff")->getScalar());
+		}
+		else
+		{
+			light->setDistanceAttenuation(
+				traceUI->getConstantAttenuation(),
+				traceUI->getLinearAttenuation(),
+				traceUI->getQuadraticAttenuation()
+				);
 		}
 	} else if( 	name == "sphere" ||
 				name == "box" ||
