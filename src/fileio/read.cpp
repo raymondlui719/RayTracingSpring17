@@ -448,6 +448,7 @@ static Material *processMaterial( Obj *child, mmap *bindings )
     }
     if( hasField( child, "shininess" ) ) {
         mat->shininess = getField( child, "shininess" )->getScalar();
+		printf("shininess: %f\n", getField(child, "shininess")->getScalar());
     }
 
     if( bindings != NULL ) {
@@ -532,8 +533,10 @@ static void processObject( Obj *obj, Scene *scene, mmap& materials )
 		if (child == NULL) {
 			throw ParseError("No info for ambient_light");
 		}
-		scene->add(new AmbientLight(scene, vec3f(1,1,1), tupleToVec(getColorField(child))));
-		scene->setAmbient(tupleToVec(getColorField(child)));
+		vec3f color = tupleToVec(getColorField(child));
+		scene->add(new AmbientLight(scene, vec3f(1,1,1), color));
+		scene->setAmbient(color);
+		printf("Color: %f %f %f\n", color[0], color[1], color[2]);
 	}	
 	else if( name == "point_light" ) {
 		if( child == NULL ) {

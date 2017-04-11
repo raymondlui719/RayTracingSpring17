@@ -41,10 +41,6 @@ public:
 
 	int			getSize();
 	int			getDepth();
-	bool IsEnableFresnel() const
-	{
-		return m_is_enable_fresnel;
-	}
 	double getConstantAttenuation() const
 	{
 		return m_nConAtn;
@@ -70,7 +66,6 @@ private:
 	double		m_nAmbLight;
 	int			m_nInt;
 	double		m_nDist;
-	double		m_is_enable_fresnel;
 
 // static class members
 	static Fl_Menu_Item menuitems[];
