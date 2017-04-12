@@ -6,6 +6,7 @@
 #include "scene/scene.h"
 #include "scene/ray.h"
 #include <map>
+#include <stack>
 
 class RayTracer
 {
@@ -14,7 +15,7 @@ public:
     ~RayTracer();
 
     vec3f trace( Scene *scene, double x, double y );
-	vec3f traceRay( Scene *scene, const ray& r, const vec3f& thresh, int depth );
+	vec3f traceRay( Scene *scene, const ray& r, const vec3f& thresh, int depth, double intensity = 1.0 );
 
 
 	void getBuffer( unsigned char *&buf, int &w, int &h );
@@ -22,7 +23,6 @@ public:
 	void traceSetup( int w, int h );
 	void traceLines( int start = 0, int stop = 10000000 );
 	void tracePixel( int i, int j );
-	double getFresnel(isect& i, const ray& r);
 
 	bool loadScene( char* fn );
 
@@ -32,7 +32,7 @@ private:
 	unsigned char *buffer;
 	int buffer_width, buffer_height;
 	int bufferSize;
-	std::map<int, Material> mediaHistory;
+	std::stack<const Material*> mediaStack;
 	Scene *scene;
 
 	bool m_bSceneLoaded;

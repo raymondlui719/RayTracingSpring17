@@ -275,7 +275,8 @@ public:
 	}
 
 	void setAmbient(vec3f ambientLight) {
-		m_AmbientLight = ambientLight;
+		m_AmbientLight += ambientLight;
+		printf("%f %f %f\n", m_AmbientLight[0], m_AmbientLight[1], m_AmbientLight[2]);
 		m_AmbientLight.clamp();
 	}
 
