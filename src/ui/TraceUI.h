@@ -46,7 +46,7 @@ public:
 
 	int			getSize();
 	int			getDepth();
-
+	
 	double getConstantAttenuation() const
 	{
 		return m_nConAtn;

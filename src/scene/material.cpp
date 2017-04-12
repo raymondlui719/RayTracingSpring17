@@ -8,6 +8,7 @@ vec3f Material::shade(Scene *scene, const ray& r, const isect& i) const
 {
 	vec3f result = ke;	// iter 0
 	vec3f ambient = prod(ka, scene->getAmbient()); // iter 1
+	//printf("%d\n", scene->getAmbient()[0]);
 	
 	vec3f trans = vec3f(1, 1, 1) - kt;
 	
@@ -18,7 +19,7 @@ vec3f Material::shade(Scene *scene, const ray& r, const isect& i) const
 	vec3f P = r.at(i.t);
 	for (Scene::cliter j = scene->beginLights(); j != scene->endLights(); ++j) {
 		vec3f atten = (*j)->distanceAttenuation(P) * (*j)->shadowAttenuation(P + i.N * RAY_EPSILON);
-		vec3f Lj = (*j)->getDirection(P);
+		vec3f Lj = ((*j)->getDirection(P)).normalize();
 		vec3f diffuse = prod(kd * maximum(normal.dot(Lj), 0.0), trans);
 		vec3f R = ((2.0 * (normal.dot(Lj)) * normal) - Lj).normalize();
 		vec3f specular = ks * (pow(maximum(R * (-r.getDirection()), 0.0), shininess * 128.0));

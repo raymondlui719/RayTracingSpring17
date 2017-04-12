@@ -23,7 +23,6 @@ public:
 	void traceSetup( int w, int h );
 	void traceLines( int start = 0, int stop = 10000000 );
 	void tracePixel( int i, int j );
-	double getFresnel(isect& i, const ray& r);
 
 	bool loadScene( char* fn );
 
