@@ -29,7 +29,7 @@ vec3f RayTracer::trace( Scene *scene, double x, double y )
 // Do recursive ray tracing!  You'll want to insert a lot of code here
 // (or places called from here) to handle reflection, refraction, etc etc.
 vec3f RayTracer::traceRay( Scene *scene, const ray& r, 
-	const vec3f& thresh, int depth )
+	const vec3f& thresh, int depth, double intensity )
 {
 	isect i;
 
@@ -37,58 +37,62 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 
 		const Material& m = i.getMaterial();
 		vec3f shade = m.shade(scene, r, i);
-		const vec3f intensity(shade[0] * thresh[0], shade[1] * thresh[1], shade[2] * thresh[2]);
+		
+		const vec3f result(shade[0] * thresh[0], shade[1] * thresh[1], shade[2] * thresh[2]);
 
-		//handle reflection
 		vec3f reflection;
-		if (!m.kr.iszero() && depth < traceUI->getDepth())
-		{
-			vec3f rDir = ((2.0 * (i.N.dot(-r.getDirection())) * i.N) - (-r.getDirection())).normalize();
-			vec3f rPoint = r.at(i.t) + i.N * RAY_EPSILON;
-			ray reflectedRay = ray(rPoint, rDir);
-			const vec3f next_thresh(thresh[0] * m.kr[0], thresh[1] * m.kr[1], thresh[2] * m.kr[2]);
-			reflection = prod(m.kr, traceRay(scene, reflectedRay, next_thresh, depth + 1));
-		}
-
-		//handle refraction
 		vec3f transmission;
-		if (!m.kt.iszero() && depth < traceUI->getDepth())
+		if (depth < traceUI->getDepth()	&& (traceUI->m_intThreshSlider->value() == 0 || intensity > traceUI->m_intThreshSlider->value()))
 		{
-			const Material* currMat = mediaStack.top();
-			double ni, nt;
-			vec3f point, normal;
-			if (currMat == &m) {
-				mediaStack.pop();
-				const Material *outside = mediaStack.top();
-				mediaStack.push(currMat);
-				ni = m.index;
-				nt = outside->index;
-				normal = -i.N;
-			}
-			else {
-				ni = currMat->index;
-				nt = m.index;
-				normal = i.N;
+			//handle reflection
+			if (!m.kr.iszero())
+			{
+				vec3f rDir = ((2.0 * (i.N.dot(-r.getDirection())) * i.N) - (-r.getDirection())).normalize();
+				vec3f rPoint = r.at(i.t) + i.N * RAY_EPSILON;
+				ray reflectedRay = ray(rPoint, rDir);
+				const vec3f next_thresh(thresh[0] * m.kr[0], thresh[1] * m.kr[1], thresh[2] * m.kr[2]);
+				reflection = prod(m.kr, traceRay(scene, reflectedRay, next_thresh, depth + 1, m.kr.length() * intensity));
 			}
 
-			const double nr = ni / nt;
-			const double ndotr = normal.dot(-r.getDirection());
-			point = r.at(i.t) - normal * RAY_EPSILON;
-			double cos_i = max(min(normal * ((-r.getDirection()).normalize()), 1.0), -1.0); //SYSNOTE: min(x, 1.0) to prevent cos_i becomes bigger than 1
-			double sin_i = sqrt(1 - cos_i * cos_i);
-			double sin_t = sin_i * nr;
+			//handle refraction
+			if (!m.kt.iszero())
+			{
+				const Material* currMat = mediaStack.top();
+				double ni, nt;
+				vec3f point, normal;
+				if (currMat == &m) {
+					mediaStack.pop();
+					const Material *outside = mediaStack.top();
+					mediaStack.push(currMat);
+					ni = m.index;
+					nt = outside->index;
+					normal = -i.N;
+				}
+				else {
+					ni = currMat->index;
+					nt = m.index;
+					normal = i.N;
+				}
 
-			if (sin_t <= 1.0) {
-				mediaStack.push(&m);
-				double cos_t = sqrt(1 - sin_t*sin_t);
-				vec3f tDir = (nr * cos_i - cos_t) * normal - nr * (-r.getDirection());
-				ray transmittedRay = ray(r.at(i.t), tDir);
-				const vec3f next_thresh(thresh[0] * m.kt[0], thresh[1] * m.kt[1], thresh[2] * m.kt[2]);
-				transmission = prod(m.kt, traceRay(scene, transmittedRay, next_thresh, depth + 1));
+				const double nr = ni / nt;
+				const double ndotr = normal.dot(-r.getDirection());
+				point = r.at(i.t) - normal * RAY_EPSILON;
+				double cos_i = max(min(normal * ((-r.getDirection()).normalize()), 1.0), -1.0); //SYSNOTE: min(x, 1.0) to prevent cos_i becomes bigger than 1
+				double sin_i = sqrt(1 - cos_i * cos_i);
+				double sin_t = sin_i * nr;
+
+				if (sin_t <= 1.0) {
+					mediaStack.push(&m);
+					double cos_t = sqrt(1 - sin_t*sin_t);
+					vec3f tDir = (nr * cos_i - cos_t) * normal - nr * (-r.getDirection());
+					ray transmittedRay = ray(r.at(i.t), tDir);
+					const vec3f next_thresh(thresh[0] * m.kt[0], thresh[1] * m.kt[1], thresh[2] * m.kt[2]);
+					transmission = prod(m.kt, traceRay(scene, transmittedRay, next_thresh, depth + 1, m.kt.length() * intensity));
+				}
 			}
 		}
 
-		return intensity + reflection + transmission;
+		return result + reflection + transmission;
 	}
 	else
 	{
