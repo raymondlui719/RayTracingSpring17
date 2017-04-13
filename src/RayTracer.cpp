@@ -9,6 +9,7 @@
 #include "fileio/read.h"
 #include "fileio/parse.h"
 #include "ui/TraceUI.h"
+#include "fileio/bitmap.h"
 
 extern TraceUI* traceUI;
 
@@ -95,9 +96,20 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 		return result + reflection + transmission;
 	}
 	else
-	{
-		return vec3f( 0.0, 0.0, 0.0 );
-	}
+		if (useBackground)
+		{
+			vec3f x = scene->getCamera()->getU();
+			vec3f y = scene->getCamera()->getV();
+			vec3f z = scene->getCamera()->getLook();
+			double dis_x = r.getDirection() * x;
+			double dis_y = r.getDirection() * y;
+			double dis_z = r.getDirection() * z;
+			return getBackgroundImage(dis_x / dis_z + 0.5, dis_y / dis_z + 0.5);
+		}
+		else
+		{
+			return vec3f(0.0, 0.0, 0.0);
+		}
 }
 
 RayTracer::RayTracer()
@@ -209,4 +221,36 @@ void RayTracer::tracePixel( int i, int j )
 	pixel[0] = (int)( 255.0 * col[0]);
 	pixel[1] = (int)( 255.0 * col[1]);
 	pixel[2] = (int)( 255.0 * col[2]);
+}
+
+void RayTracer::loadBackground(char* fn)
+{
+	unsigned char* data = NULL;
+	data = readBMP(fn, background_width, background_height);
+	if (data) {
+		if (backgroundImage == NULL) delete[] backgroundImage;
+		useBackground = true;
+		backgroundImage = data;
+	}
+}
+
+void RayTracer::clearBackground() {
+	if (backgroundImage == NULL) delete[] backgroundImage;
+	backgroundImage = NULL;
+	useBackground = false;
+	background_height = background_width = 0;
+}
+
+vec3f RayTracer::getBackgroundImage(double x, double y) {
+	if (!useBackground) return vec3f(0, 0, 0);
+	int xGrid = int(x*background_width);
+	int yGrid = int(y*background_height);
+	if (xGrid < 0 || xGrid >= background_width || yGrid < 0 || yGrid >= background_height)
+	{
+		return vec3f(0, 0, 0);
+	}
+	double val1 = backgroundImage[(yGrid*background_width + xGrid) * 3] / 255.0;
+	double val2 = backgroundImage[(yGrid*background_width + xGrid) * 3 + 1] / 255.0;
+	double val3 = backgroundImage[(yGrid*background_width + xGrid) * 3 + 2] / 255.0;
+	return vec3f(val1, val2, val3);
 }

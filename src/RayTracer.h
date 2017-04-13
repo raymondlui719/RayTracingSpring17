@@ -23,6 +23,9 @@ public:
 	void traceSetup( int w, int h );
 	void traceLines( int start = 0, int stop = 10000000 );
 	void tracePixel( int i, int j );
+	void loadBackground(char* fn);
+	void clearBackground();
+	vec3f getBackgroundImage(double x, double y);
 
 	bool loadScene( char* fn );
 
@@ -32,6 +35,9 @@ private:
 	unsigned char *buffer;
 	int buffer_width, buffer_height;
 	int bufferSize;
+	bool useBackground;
+	unsigned char *backgroundImage;
+	int background_height, background_width;
 	std::stack<const Material*> mediaStack;
 	Scene *scene;
 
