@@ -91,6 +91,8 @@ private:
 	static void cb_quadAtnSlides(Fl_Widget* o, void* v);
 	static void cb_ambLightSlides(Fl_Widget* o, void* v);
 	static void cb_intThershSlides(Fl_Widget* o, void* v);
+	static void cb_load_background_image(Fl_Menu_* o, void* v);
+	static void cb_clear_background_image(Fl_Menu_* o, void* v);
 
 	static void cb_render(Fl_Widget* o, void* v);
 	static void cb_stop(Fl_Widget* o, void* v);
